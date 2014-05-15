@@ -1,3 +1,4 @@
+//Made by Jordan Duty(AKA djdduty) May 14, 2014.
 precision highp float;
 uniform float time;
 uniform vec2 mouse;
@@ -25,7 +26,7 @@ struct Sphere
 const int numSpheres = 7;
 Sphere spheres[numSpheres];
 
-vec3 LightPos = vec3(0,-3,0);
+vec3 LightPos = vec3(0,-3,10);
 
 vec3 Intersects(Sphere s, Ray r)
 {
@@ -130,6 +131,25 @@ vec3 Trace2(Ray r)
     nhit = normalize(nhit);
     float bias = 1e-4;
 
+    bool inside = false;
+    if(dot(r.Dir, nhit) > 0.0) nhit *= -1.0, inside = true;
+
+    if(s.Reflection > 0.0)
+    {
+        float facingratio = dot((r.Dir*-1.0), nhit);
+        vec3 refldir = r.Dir - nhit * 2.0 * dot(r.Dir, nhit);
+        refldir = normalize(refldir);
+        Ray rd;
+        rd.Pos = phit;
+        rd.Dir = refldir;
+        vec3 refl = Trace3(rd);
+        float param1 = (1.0-s.Reflection);
+        float param2 = s.Reflection;
+        Color.x = (param1 * Color.x + param2 * refl.x);
+        Color.y = (param1 * Color.y + param2 * refl.y);
+        Color.z = (param1 * Color.z + param2 * refl.z);
+    }
+
     vec3 lightDir = LightPos - phit;
     bool blocked = false;
     lightDir = normalize(lightDir);
@@ -167,24 +187,6 @@ vec3 Trace2(Ray r)
         Color+=ambientColor;
     }
 
-    bool inside = false;
-    if(dot(r.Dir, nhit) > 0.0) nhit *= -1.0, inside = true;
-
-    if(s.Reflection > 0.0)
-    {
-        float facingratio = dot((r.Dir*-1.0), nhit);
-        vec3 refldir = r.Dir - nhit * 2.0 * dot(r.Dir, nhit);
-        refldir = normalize(refldir);
-        Ray rd;
-        rd.Pos = phit;
-        rd.Dir = refldir;
-        vec3 refl = Trace3(rd);
-        float param1 = (1.0-s.Reflection);
-        float param2 = s.Reflection;
-        Color.x = (param1 * Color.x + param2 * refl.x);
-        Color.y = (param1 * Color.y + param2 * refl.y);
-        Color.z = (param1 * Color.z + param2 * refl.z);
-    }
 
     return Color;
 }
@@ -212,6 +214,25 @@ vec3 Trace(Ray r)
     nhit = normalize(nhit);
     float bias = 1e-4;
 
+    bool inside = false;
+    if(dot(r.Dir, nhit) > 0.0) nhit *= -1.0, inside = true;
+
+    if(s.Reflection > 0.0)
+    {
+        float facingratio = dot((r.Dir*-1.0), nhit);
+        vec3 refldir = r.Dir - nhit * 2.0 * dot(r.Dir, nhit);
+        refldir = normalize(refldir);
+        Ray rd;
+        rd.Pos = phit;
+        rd.Dir = refldir;
+        vec3 refl = Trace2(rd);
+        float param1 = (1.0-s.Reflection);
+        float param2 = s.Reflection;
+        Color.x = (param1 * Color.x + param2 * refl.x);
+        Color.y = (param1 * Color.y + param2 * refl.y);
+        Color.z = (param1 * Color.z + param2 * refl.z);
+    }
+
     vec3 lightDir = LightPos - phit;
     bool blocked = false;
     lightDir = normalize(lightDir);
@@ -249,24 +270,6 @@ vec3 Trace(Ray r)
         Color+=ambientColor;
     }
 
-    bool inside = false;
-    if(dot(r.Dir, nhit) > 0.0) nhit *= -1.0, inside = true;
-
-    if(s.Reflection > 0.0)
-    {
-        float facingratio = dot((r.Dir*-1.0), nhit);
-        vec3 refldir = r.Dir - nhit * 2.0 * dot(r.Dir, nhit);
-        refldir = normalize(refldir);
-        Ray rd;
-        rd.Pos = phit;
-        rd.Dir = refldir;
-        vec3 refl = Trace2(rd);
-        float param1 = (1.0-s.Reflection);
-        float param2 = s.Reflection;
-        Color.x = (param1 * Color.x + param2 * refl.x);
-        Color.y = (param1 * Color.y + param2 * refl.y);
-        Color.z = (param1 * Color.z + param2 * refl.z);
-    }
 
     return Color;
 }
@@ -281,7 +284,7 @@ void main(void)
     spheres[1].Pos = vec3(-5,0,-0);
     spheres[1].Color = vec3(0.3,0.3,0.3);
     spheres[1].Rad = 4.0;
-    spheres[1].Reflection = 0.5;
+    spheres[1].Reflection = 0.3;
 
     spheres[2].Pos = vec3(-5,1004,-0);
     spheres[2].Color = vec3(0.1,0.1,0.1);
@@ -320,7 +323,7 @@ void main(void)
     vec3 camDir = camTrans - vec3(0);
 
     camTrans.y = -5.0;
-    LightPos.y = -20.0;//camTrans;
+    LightPos.y = -10.0;//camTrans;
 
     mat3 rot;
     vec3 f = normalize(camTrans);
