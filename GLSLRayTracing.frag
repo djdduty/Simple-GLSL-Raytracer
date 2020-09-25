@@ -16,6 +16,7 @@ struct Sphere
 	float Reflection;
 };
 
+const int numBounces = 5;
 const int numSpheres = 7;
 Sphere spheres[numSpheres];
 
@@ -38,237 +39,88 @@ float mix2(float a, float b, float c)
 	return b*c+a*(1.0-c);	
 }
 
-vec3 Trace3(Ray r)
-{
-	vec3 Color = vec3(0,0,0);
-	Sphere s;
-	bool col = false;
-	float tnear = 1e8;
-	for(int i = 0; i < numSpheres; i++)
-	{
-		vec3 intTest = Intersects(spheres[i],r);
-		if(intTest.z != -1.0) {
-			if(intTest.x < tnear) {
-				tnear = intTest.x;
-				s = spheres[i];
-				col = true;
-			}
-		}
-	}
-	if(col==false) return vec3(0,0,0);
-	vec3 phit = r.Pos + r.Dir * tnear;
-	vec3 nhit = phit - s.Pos;
-	nhit = normalize(nhit);
-	float bias = 1e-4;
-	
-	vec3 lightDir = LightPos - phit;
-	bool blocked = false;
-	lightDir = normalize(lightDir);
-	float DiffuseFactor = dot(nhit, lightDir);
-	vec3 diffuseColor = vec3(0,0,0);
-	vec3 ambientColor = vec3(s.Color * 0.2);
-	
-	for(int n = 0; n < numSpheres; n++)
-	{
-		Ray rl;
-		rl.Pos = phit;
-		rl.Dir = lightDir;
-		vec3 intTestL = Intersects(spheres[n],rl); 
-		if(intTestL.z != -1.0)
-		{
-			if(intTestL.x < length(LightPos-phit))
-				blocked = true;	
-		}
-	}
-	
-	if(!blocked)
-	{
-		if(DiffuseFactor > 0.0)
-		{
-			diffuseColor = 	vec3(1,1,1)*DiffuseFactor;
-			Color += s.Color*diffuseColor + ambientColor;
-		}
-		else
-		{
-			Color+=ambientColor;	
-		}
-	} 
-	else
-	{
-		Color+=ambientColor;
-	}
-	
-	return Color;
-}
-
-vec3 Trace2(Ray r)
-{
-	vec3 Color = vec3(0,0,0);
-	Sphere s;
-	bool col = false;
-	float tnear = 1e8;
-	for(int i = 0; i < numSpheres; i++)
-	{
-		vec3 intTest = Intersects(spheres[i],r);
-		if(intTest.z != -1.0) {
-			if(intTest.x < tnear) {
-				tnear = intTest.x;
-				s = spheres[i];
-				col = true;
-			}
-		}
-	}
-	if(col==false) return vec3(0,0,0);
-	vec3 phit = r.Pos + r.Dir * tnear;
-	vec3 nhit = phit - s.Pos;
-	nhit = normalize(nhit);
-	float bias = 1e-4;
-	
-	bool inside = false;
-	if(dot(r.Dir, nhit) > 0.0) nhit *= -1.0, inside = true;
-	
-	if(s.Reflection > 0.0)
-	{
-		float facingratio = dot((r.Dir*-1.0), nhit);
-		vec3 refldir = r.Dir - nhit * 2.0 * dot(r.Dir, nhit);
-		refldir = normalize(refldir);
-		Ray rd;
-		rd.Pos = phit;
-		rd.Dir = refldir;
-		vec3 refl = Trace3(rd);
-		float param1 = (1.0-s.Reflection);
-		float param2 = s.Reflection;
-		Color.x = (param1 * Color.x + param2 * refl.x);
-		Color.y = (param1 * Color.y + param2 * refl.y);
-		Color.z = (param1 * Color.z + param2 * refl.z);
-	}
-	
-	vec3 lightDir = LightPos - phit;
-	bool blocked = false;
-	lightDir = normalize(lightDir);
-	float DiffuseFactor = dot(nhit, lightDir);
-	vec3 diffuseColor = vec3(0,0,0);
-	vec3 ambientColor = vec3(s.Color * 0.2);
-	
-	for(int n = 0; n < numSpheres; n++)
-	{
-		Ray rl;
-		rl.Pos = phit;
-		rl.Dir = lightDir;
-		vec3 intTestL = Intersects(spheres[n],rl); 
-		if(intTestL.z != -1.0)
-		{
-			if(intTestL.x < length(LightPos-phit))
-				blocked = true;	
-		}
-	}
-	
-	if(!blocked)
-	{
-		if(DiffuseFactor > 0.0)
-		{
-			diffuseColor = 	vec3(1,1,1)*DiffuseFactor;
-			Color += s.Color*diffuseColor + ambientColor;
-		}
-		else
-		{
-			Color+=ambientColor;	
-		}
-	} 
-	else
-	{
-		Color+=ambientColor;
-	}
-	
-	
-	return Color;
-}
-
 vec3 Trace(Ray r)
 {
 	vec3 Color = vec3(0,0,0);
-	Sphere s;
-	bool col = false;
-	float tnear = 1e8;
-    
-	for(int i = 0; i < numSpheres; i++)
+	float frac=1.0;
+	
+	for(int bounce = 0; bounce < numBounces; bounce++)
 	{
-		vec3 intTest = Intersects(spheres[i],r);
-		if(intTest.z != -1.0) {
-			if(intTest.x < tnear) {
-				tnear = intTest.x;
-				s = spheres[i];
-				col = true;
+		if(frac <0.01) break;
+		Sphere s;
+		bool col = false;
+		float tnear = 1e8;
+		
+		for(int i = 0; i < numSpheres; i++)
+		{
+			vec3 intTest = Intersects(spheres[i],r);
+			if(intTest.z != -1.0) {
+				if(intTest.x < tnear) {
+					tnear = intTest.x;
+					s = spheres[i];
+					col = true;
+				}
 			}
 		}
-	}
-    
-    
-	if(col==false) return vec3(0,0,0);
-    
-    
-	vec3 phit = r.Pos + r.Dir * tnear;
-	vec3 nhit = phit - s.Pos;
-	nhit = normalize(nhit);
-	float bias = 1e-4;
-	
-    
-	bool inside = false;
-	if(dot(r.Dir, nhit) > 0.0) nhit *= -1.0, inside = true;
-	
-	if(s.Reflection > 0.0)
-	{
-		float facingratio = dot((r.Dir*-1.0), nhit);
+		
+		if(col==false) continue;
+		
+		vec3 phit = r.Pos + r.Dir * tnear;
+		vec3 nhit = phit - s.Pos;
+		nhit = normalize(nhit);
+		float bias = 1e-4;
+		
+		bool inside = false;
+		if(dot(r.Dir, nhit) > 0.0) nhit *= -1.0, inside = true;
+		
 		vec3 refldir = r.Dir - nhit * 2.0 * dot(r.Dir, nhit);
 		refldir = normalize(refldir);
-		Ray rd;
-		rd.Pos = phit;
-		rd.Dir = refldir;
-		vec3 refl = Trace2(rd);
-		float param1 = (1.0-s.Reflection);
-		float param2 = s.Reflection;
-		Color.x = (param1 * Color.x + param2 * refl.x);
-		Color.y = (param1 * Color.y + param2 * refl.y);
-		Color.z = (param1 * Color.z + param2 * refl.z);
-	}
-	
-	vec3 lightDir = LightPos - phit;
-	bool blocked = false;
-	lightDir = normalize(lightDir);
-	float DiffuseFactor = dot(nhit, lightDir);
-	vec3 diffuseColor = vec3(0,0,0);
-	vec3 ambientColor = vec3(s.Color * 0.2);
-	
-	for(int n = 0; n < numSpheres; n++)
-	{
-		Ray rl;
-		rl.Pos = phit;
-		rl.Dir = lightDir;
-		vec3 intTestL = Intersects(spheres[n],rl); 
-		if(intTestL.z != -1.0)
+		
+		vec3 localColor;
+		vec3 lightDir = LightPos - phit;
+		bool blocked = false;
+		lightDir = normalize(lightDir);
+		float DiffuseFactor = dot(nhit, lightDir);
+		vec3 diffuseColor = vec3(0,0,0);
+		vec3 ambientColor = vec3(s.Color * 0.2);
+		
+		for(int n = 0; n < numSpheres; n++)
 		{
-			if(intTestL.x < length(LightPos-phit))
-				blocked = true;	
+			Ray rl;
+			rl.Pos = phit;
+			rl.Dir = lightDir;
+			vec3 intTestL = Intersects(spheres[n],rl); 
+			if(intTestL.z != -1.0)
+			{
+				if(intTestL.x < length(LightPos-phit))
+					blocked = true;
+			}
 		}
-	}
-	
-	if(!blocked)
-	{
-		if(DiffuseFactor > 0.0)
+		
+		if(!blocked)
 		{
-			diffuseColor = 	vec3(1,1,1)*DiffuseFactor;
-			Color += s.Color*diffuseColor + ambientColor;
-		}
+			if(DiffuseFactor > 0.0)
+			{
+				diffuseColor = vec3(1,1,1)*DiffuseFactor;
+				localColor += s.Color * diffuseColor + ambientColor;
+			}
+			else
+			{
+				localColor += ambientColor;
+			}
+		} 
 		else
 		{
-			Color+=ambientColor;	
+			localColor += ambientColor;
 		}
-	} 
-	else
-	{
-		Color+=ambientColor;
+		
+		Color.x += localColor.x * (1.0-s.Reflection) * frac;
+		Color.y += localColor.y * (1.0-s.Reflection) * frac;
+		Color.z += localColor.z * (1.0-s.Reflection) * frac;
+		r.Pos = phit;
+		r.Dir = refldir;
+		frac *= s.Reflection;
 	}
-	
 	
 	return Color;
 }
@@ -289,27 +141,27 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 	spheres[2].Color = vec3(0.1,0.1,0.1);
 	spheres[2].Rad = 1000.0;
 	//spheres[2].Reflection = 0.15;
-    spheres[2].Reflection = 0.28;
+	spheres[2].Reflection = 0.28;
 	
 	spheres[3].Pos = vec3(-5,0,-1040);
 	spheres[3].Color = vec3(0.5,0.5,0.5);
 	spheres[3].Rad = 1000.0;
-	spheres[3].Reflection = 0.05;
+	spheres[3].Reflection = 0.15;
 	
 	spheres[4].Pos = vec3(1020,0,-0);
 	spheres[4].Color = vec3(0.9,0.9,0.0);
 	spheres[4].Rad = 1000.0;
-	spheres[4].Reflection = 0.05;
+	spheres[4].Reflection = 0.15;
 	
 	spheres[5].Pos = vec3(-1020,0,-0);
 	spheres[5].Color = vec3(0.2,0.2,0.7);
 	spheres[5].Rad = 1000.0;
-	spheres[5].Reflection = 0.05;
+	spheres[5].Reflection = 0.15;
 	
 	spheres[6].Pos = vec3(-5,0,1040);
 	spheres[6].Color = vec3(0.0,0.8,0.4);
 	spheres[6].Rad = 1000.0;
-	spheres[6].Reflection = 0.05;
+	spheres[6].Reflection = 0.15;
 	
 	float invWidth = 1.0 / iResolution.x;
 	float invHeight = 1.0 / iResolution.y;
@@ -341,8 +193,8 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 	R.Dir = vec3(xx,yy,-1) * rot;
 	R.Dir = normalize(R.Dir);
 	
-    
-    vec3 col=Trace(R);
-    col=pow(col, vec3(0.45454));
+	
+	vec3 col=Trace(R);
+	col=pow(col, vec3(0.45454));
 	fragColor = vec4(col, 1.0);
 }
